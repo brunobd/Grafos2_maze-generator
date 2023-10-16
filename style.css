@@ -76,7 +76,9 @@ nav{
 }
 p {
   font-size: 30pt;
+  text-align: center;
   color: rgb(0, 0, 0);
+  display: block;
 }
 #select{
   font-weight: 600;

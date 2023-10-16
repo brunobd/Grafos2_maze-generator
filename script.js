@@ -1,8 +1,8 @@
 var canvas;
 var context;
 var output;
-var WIDTH = 1000;
-var HEIGHT = 1000;
+var WIDTH = 625;
+var HEIGHT = 625;
 
 const offset = 0;
 
@@ -13,7 +13,7 @@ mazeCellCount = 25;
 
 function getRandomCoordinates() {
   min = 0;
-  max = 25;
+  max = mazeCellCount;
   return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
 }
 function getRandomIndex(max) {
@@ -35,9 +35,9 @@ var aborted = false;
 var generating = false;
 
 var maze = [];
-for (c = 0; c < mazeCellCount; c++) {
+for (let c = 0; c < mazeCellCount; c++) {
   maze[c] = [];
-  for (r = 0; r < mazeCellCount; r++) {
+  for (let r = 0; r < mazeCellCount; r++) {
     maze[c][r] = {
       x: c * (mazeCellWidth + offset),
       y: r * (mazeCellHeight + offset),
@@ -69,9 +69,9 @@ function rect(x, y, w, h, state, on_stack) {
     } else if (state == "e") {
       context.fillStyle = "#AAAAAA";
     } else if (state == "w") {
-      context.fillStyle = "#0000FF";
-    } else if (state == "x") {
       context.fillStyle = "#000000";
+    } else if (state == "x") {
+      context.fillStyle = "#0000ff";
     } else {
       context.fillStyle = "#FFFF00";
     }
@@ -470,9 +470,9 @@ async function breadth_first_search() {
 }
 
 async function generate_maze_prim() {
-  for (c = 0; c < mazeCellCount; c++) {
+  for (let c = 0; c < mazeCellCount; c++) {
     maze[c] = [];
-    for (r = 0; r < mazeCellCount; r++) {
+    for (let r = 0; r < mazeCellCount; r++) {
       if (c == startX && r == startY) {
         maze[c][r] = {
           x: c * (mazeCellWidth + offset),
@@ -497,70 +497,49 @@ async function generate_maze_prim() {
       }
     }
   }
-  let activeCells = [];
-  activeCells.push(maze[startX][startY]);
-  let visitedCells = Array(mazeCellCount * mazeCellCount).fill(false);
-  while (activeCells.length > 0) {
-    await timer(0.01);
-    draw();
-    let randomActiveCellIndex = getRandomIndex(activeCells.length);
-    let randomActiveCell = {
-      x: activeCells[randomActiveCellIndex].x / mazeCellWidth,
-      y: activeCells[randomActiveCellIndex].y / mazeCellHeight,
-    };
-    let x = randomActiveCell.x;
-    let y = randomActiveCell.y;
-    let frontierCells = [];
-    if (x - 2 >= 0) {
-      if (visitedCells[y * mazeCellCount + (x - 2)] == false) {
-        if (maze[x - 2][y].state == "w") {
-          frontierCells.push(maze[x - 2][y]);
-        }
-      }
-    }
-    if (y - 2 >= 0) {
-      if (visitedCells[(y - 2) * mazeCellCount + x] == false) {
-        if (maze[x][y - 2].state == "w") {
-          frontierCells.push(maze[x][y - 2]);
-        }
-      }
-    }
-    if (x + 2 <= mazeCellCount - 1) {
-      if (visitedCells[y * mazeCellCount + (x + 2)] == false) {
-        if (maze[x + 2][y].state == "w") {
-          frontierCells.push(maze[x + 2][y]);
-        }
-      }
-    }
-    if (y + 2 <= mazeCellCount - 1) {
-      if (visitedCells[(y + 2) * mazeCellCount + x] == false) {
-        if (maze[x][y + 2].state == "w") {
-          frontierCells.push(maze[x][y + 2]);
+
+  const directions = [
+    [-2, 0],
+    [2, 0],
+    [0, -2],
+    [0, 2],
+  ];
+  const stack = [[startX, startY]];
+  while (stack.length > 0) {
+    const [currentRow, currentCol] = stack[stack.length - 1];
+    const neighbors = [];
+
+    for (const [dr, dc] of directions) {
+      const newRow = currentRow + dr;
+      const newCol = currentCol + dc;
+
+      if (
+        newRow >= 0 &&
+        newRow < mazeCellCount &&
+        newCol >= 0 &&
+        newCol < mazeCellCount
+      ) {
+        if (
+          maze[newRow][newCol].state === "w" ||
+          maze[newRow][newCol].state === "f"
+        ) {
+          neighbors.push([newRow, newCol]);
         }
       }
     }
 
-    let randomFrontierCellIndex = getRandomIndex(frontierCells.length);
+    if (neighbors.length === 0) {
+      stack.pop();
+    } else {
+      const [newRow, newCol] =
+        neighbors[Math.floor(Math.random() * neighbors.length)];
+      maze[newRow][newCol].state = "e";
 
-    let randomFrontierCell = {
-      x: frontierCells[randomFrontierCellIndex].x / mazeCellWidth,
-      y: frontierCells[randomFrontierCellIndex].y / mazeCellHeight,
-    };
-    visitedCells[
-      randomFrontierCell.y * mazeCellCount + randomFrontierCell.x
-    ] = true;
-
-    let middleCell = {
-      x: (randomFrontierCell.x + randomActiveCell.x) / 2,
-      y: (randomFrontierCell.y + randomActiveCell.y) / 2,
-    };
-    maze[randomFrontierCell.x][randomFrontierCell.y].state = "e";
-    if (maze[middleCell.x][middleCell.y].state != "f") {
-      maze[middleCell.x][middleCell.y].state = "e";
+      maze[currentRow + (newRow - currentRow) / 2][
+        currentCol + (newCol - currentCol) / 2
+      ].state = "e";
+      stack.push([newRow, newCol]);
     }
-    activeCells.push(maze[randomFrontierCell.x][randomFrontierCell.y]);
-    activeCells = activeCells.filter(
-      (cell, index) => index != randomActiveCellIndex
-    );
   }
+  maze[finishX][finishY].state = "f";
 }
